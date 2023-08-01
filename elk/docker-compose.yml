@@ -1,0 +1,52 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.2
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - 9200:9200
+    volumes:
+      - ./elasticsearch:/usr/share/elasticsearch/data
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.2
+    restart: unless-stopped
+    depends_on:
+      - logstash
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - PATH_DATA=/usr/share/kibana/data
+    ports:
+      - 5601:5601
+    volumes:
+      - ./kibana:/usr/share/kibana/data
+    networks:
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.2
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    environment:
+      - NODE_NAME=logstash
+      - xpack.monitoring.enabled=false
+    ports:
+      - 5324:514/udp
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./test-logs:/usr/share/test-logs
+      - ./logstash/sincedb:/usr/share/logstash/sincedb_dir/sincedb
+    networks:
+      - elk
+
+networks:
+  elk:
+    driver: bridge
